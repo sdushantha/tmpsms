@@ -2,7 +2,7 @@
   <img src="images/logo.png">
 </h1>
 
-<p align="center">A temporary SMS right from your terminal written in POSIX sh</p><br>
+<p align="center">A temporary SMS right from your terminal written in POSIX sh</p>
 <p align="center">
 <img src="images/demo.gif"> 
 </p>
