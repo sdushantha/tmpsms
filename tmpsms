@@ -1,0 +1,216 @@
+#!/usr/bin/env sh
+#
+# by Siddharth Dushantha
+#
+
+VERSION="1.0.0"
+
+# Everything related to 'tmpsms' will be stored in this directory. Once the
+# computer get restarted, this directory gets deleted.
+TMPSMS_DIR="/tmp/tmpsms"
+
+# The phone number that the user has selected gets stored in this file so that
+# the do not have reselect at ever run.
+TMPSMS_PHONE_NUMBER="$TMPSMS_DIR/phonenumber.txt"
+
+# 'fzf' is used to allow the user to select a phone number. This variable
+# stores extra arguments which the user might to provide, so that 'fzf'
+# behaves to their liking.
+FZF_ARGUMENTS=""
+
+# The temporary SMS service is provided by Upmasked
+API="https://upmasked.com"
+
+usage(){
+    # Using 'cat << EOF' we can easily output a multiline text. This is much
+    # better than using 'echo' for each line or using '\n' to create a new line.
+    cat <<EOF
+tmpsms [--count <count>]
+tmpsms init [--fzf <arguments>]
+tmpsms -h | --version
+
+When called with no options or commands, tmpsms lists
+the 3 newest messages.
+
+Options
+-h, --help     Show this help message
+-c, --count    Only show the <count> newest messages
+--version      Show version
+
+Commands
+init           Initialize a new phone number by selecting one
+               from the available ones using 'fzf'
+  --fzf        Extra arguments to use for 'fzf'
+EOF
+}
+
+print_error(){
+    # Print error message
+    #
+    # The first argument provided to this function will be the error message.
+    # Script will exit after printing the error message.
+    printf "%s\n" "Error: $1" >&2
+    exit 1
+}
+
+
+select_phone_number(){
+    # There are 2 ways which this function is called in this script.
+    # [1] The user wants to initilize a new phone number by running 'tmpsms init'
+    # [2] The user runs 'tmpsms' to check for new messages, but $TMPSMS_PHONE_NUMBER
+    #     does't exist. Therefore they have to select phone number before we can 
+    #     show them the messages.
+    #
+    # When the function 'select_phone_number()' is called with the argument 'true'
+    # that means this function was called becaues the user ran 'tmpsms init'
+    #
+    # We need this variable so we can know whether or not we need to show the user
+    # the phone number they have selected. If they ran 'tmpsms init', then we will
+    # show them the phone number they selected. This is so that they can easily
+    # copy and paste it to whatever site that needs the phone number.
+    EXTERNALLY=${1:-false}
+    
+    # Fetch the available phone numbers
+    DATA=$(curl -s "$API/api/sms/numbers")
+
+    # Using 'jq' we are able to get the length of the JSON data retreived from
+    # API. The length indicates the the total number of phone numbers available.
+    DATA_LENGTH=$(printf %s "$DATA" | jq length)
+
+    # This is where we store the phone numbers which then gets shown to the user
+    # through 'fzf' so that they can select one.
+    PHONE_NUMBERS=""
+
+    index=1
+    while [ $index -le "$DATA_LENGTH" ]; do
+        # Since arrays in JSON data start at 0, we must subtract
+        # the value of $index by 1 so that we dont miss one of the
+        # phone numbers in the array
+        PHONE_NUMBER_INFO=$(printf %s "$DATA" | jq -r ".[$index-1]")
+        PHONE_NUMBER=$(printf %s "$PHONE_NUMBER_INFO" | jq -r ".number")
+        COUNTRY_CODE=$(printf %s "$PHONE_NUMBER_INFO" | jq -r ".country")
+
+        PHONE_NUMBERS="$PHONE_NUMBERS$COUNTRY_CODE +$PHONE_NUMBER\n"
+        index=$((index+1))
+    done
+    
+    # By default we use 'fzf' without any arguments in order to display the
+    # phone numbers they can use. If the '--fzf' argument is passed along with
+    # 'fzf' arguments, 'tmpsms' will make sure to use them.
+    FZF_COMMAND="fzf"
+    [ -n "$FZF_ARGUMENTS" ] && FZF_COMMAND="fzf $FZF_ARGUMENTS"
+
+    # If the user did not select a phone number then quit 'tmpsms' as the
+    # user might have just wanted to check if there were any new number
+    # that they could use.
+    SELECTION=$(printf %b "$PHONE_NUMBERS" | $FZF_COMMAND)
+    [ -z "$SELECTION" ] && print_error "Phone number was not selected"
+
+    # Store the selected phone number in $TMPSMS_PHONE_NUMBER for later use 
+    printf %s "$SELECTION" > "$TMPSMS_PHONE_NUMBER"
+
+    # If the user ran 'tmpsms init', then show them their selection
+    [ "$EXTERNALLY" = true ] && printf "%s\n" "$SELECTION"
+}
+
+list_messages(){
+    # By default, the 3 newest messages are shown. But if the user would like
+    # to see more of the messages, they can provide how many they want to see
+    # by using the '--count' option.
+    COUNT="${1:-3}"
+
+    # The provided to '--count' must be an interger. We can verify that it is
+    # an integer by checking if $COUNT matches the regex.
+    REGEX='^[0-9]+$'
+    if ! printf %s "$COUNT" | grep -Eq "$REGEX";then
+        print_error "'$COUNT' is not an integer"
+    fi
+
+    # If /tmp/tmpsms/phonenumber.txt does not exist or is empty that means that
+    # the user has not initilized a phone number yet.
+    [ ! -s "$TMPSMS_PHONE_NUMBER" ] && print_error "A phone number must be initilzied in order to view the messages"
+
+    # The country code is needed because it gets displayed to the user. It may
+    # be useful for the user to know which country the phone number is from
+    # so that they dont have to guess by looking at the area code.
+    COUNTRY_CODE=$(awk -F" " '{print $1}' < $TMPSMS_PHONE_NUMBER)
+    PHONE_NUMBER=$(awk -F"+" '{print $2}' < $TMPSMS_PHONE_NUMBER)
+    DATA=$(curl -s "$API/api/sms/messages/$PHONE_NUMBER")
+
+    # Even thought we are using the phone numbers that are available on
+    # upmasked.com, there is a chance that they might remove one of the numbers.
+    # The checking needs to be done in case the phone number that is stored in
+    # $TMPSMS_PHONE_NUMBER has been removed.
+    if printf %s "$DATA" | grep -Eq "Not Found"; then
+        print_error "Looks like the phone number '+$PHONE_NUMBER' no longer exists. Initialize a new one and try again."
+    fi
+
+    DATA_LENGTH=$(printf %s "$DATA" | jq length)
+
+    # If the number of messages the user wants to view is greater than the
+    # number of messages that are available, then make sure to show
+    # all the messages that are avaiable.
+    [ "$COUNT" -gt "$DATA_LENGTH" ] && COUNT="$DATA_LENGTH"
+
+    # Show a nice little header before showing the messages
+    printf "%s\n\n" "[ Messages for +$PHONE_NUMBER ($COUNTRY_CODE) ]"
+
+    # All the messages get stored in here
+    MESSAGES=""
+
+    index=1
+    while [ $index -le "$COUNT" ]; do
+        # Since arrays in JSON data start at 0, we must subtract
+        # the value of $index by 1 so that we dont miss one of the
+        # messages in the array
+        MESSAGE_DATA=$(printf %s "$DATA" | jq -r ".[$index-1]")
+        BODY=$(printf %s "$MESSAGE_DATA" | jq -r ".body" | tr "\n" " ")
+        SENDER=$(printf %s "$MESSAGE_DATA" | jq -r ".originator")
+        
+        # The '||' are used as a divideder for 'column'. 'column' will use this
+        # divider as a point of reference to create the division. By default
+        # 'column' uses a blank space but that would not work in our case as the
+        # message boyd could have multiple white spaces and 'column' would
+        # split the words that are seperated by white space, in different columns.
+        MESSAGES="$MESSAGES$SENDER ||$BODY\n"
+
+        index=$((index+1))
+    done
+
+    # Show the messages cleanly
+    printf "%b" "$MESSAGES" | column -t -s "||"
+}
+
+main(){
+    # Iterate of the array of dependencies and check if the user has them installed.
+    for dependency in jq curl fzf; do
+        if ! command -v "$dependency" >/dev/null 2>&1; then
+            print_error "Could not find '$dependency', is it installed?"
+        fi
+    done
+
+    # Create the $TMPSMS_DIR directory and dont throw any errors
+    # if it already exists
+    mkdir -p "$TMPSMS_DIR"
+
+    # If no arguments are provided just show the messages 
+    [ $# -eq 0 ] && list_messages && exit 0
+
+    while [ "$1" ]; do
+        case "$1" in
+            init)
+                case "$2" in
+                    --fzf) FZF_ARGUMENTS="$3" && select_phone_number true ;;
+                    "") select_phone_number true ;;
+                esac ;;
+            --help | -h) usage && exit ;;
+            --count | -c) list_messages "$2" && shift 2;;
+            --version) printf %s "$VERSION" && exit ;;
+            -*) print_error "option '$1' does not exist" ;;
+            *) print_error "command '$1' does not exist" ;;
+        esac
+        shift
+    done
+}
+
+main "$@"
