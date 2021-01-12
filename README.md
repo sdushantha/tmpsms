@@ -10,17 +10,8 @@
 `tmpsms` is a command line utility written in POSIX `sh` that allows you to get a
 temporary phone number and receive SMSes. It uses Upmasked temporary SMS service in order to receive the messages. This is a very usefull
 tool for those who use are testing applications during bug bounty hunting or just need some privacy and dont wan't to use your personal phone number.
-
 This is a easy to use with simple outputs. `tmpsms` can be intergrated with other scripts to improve your workflow.
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
+
 ## Dependencies
 - `curl`
 - [`jq`](https://github.com/stedolan/jq)
