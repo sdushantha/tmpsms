@@ -8,9 +8,9 @@
 </p>
 
 `tmpsms` is a command line utility written in POSIX `sh` that allows you to get a
-temporary phone number and receive SMSes. It uses [Upmasked](https://upmasked.com/) temporary SMS service in order to receive the messages. This is a very usefull
-tool for those who use are testing applications during bug bounty hunting or just need some privacy and don't want to use your personal phone number.
-This is a easy to use with simple outputs. `tmpsms` can be integrated with other scripts to improve your workflow.
+temporary phone number and receive SMSes. It uses [Upmasked](https://upmasked.com/) temporary SMS service in order to receive the messages. This is a very useful
+tool for those testing applications during bug bounty hunting or who just need some privacy and don't want to use a personal phone number.
+This is easy to use with simple outputs. `tmpsms` can be integrated with other scripts to improve your workflow.
 
 ## Dependencies
 - `curl`
@@ -58,7 +58,7 @@ View the 5 newest messages. By default `tmpsms` shows the 3 newest messages.
 $ tmpsms --count 5
 ```
 
-If you find rerunning `tmpsms` every few second to check if your message has arrived a hastle, combine `tmpsms` with `watch`. Use a delay of 5 seconds as Upmasked only get updates the messages every 5 seconds.
+If you find it a hassle to rerun `tmpsms` every few seconds, use `watch` with a delay of 5 seconds. Upmasked only updates messages every 5 seconds.
 ```console
 $ watch -n 5 "tmpsms"
 ```
