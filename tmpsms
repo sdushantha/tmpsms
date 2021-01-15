@@ -119,7 +119,7 @@ list_messages(){
     # by using the '--count' option.
     COUNT="${1:-3}"
 
-    # The provided to '--count' must be an interger. We can verify that it is
+    # The provided value to '--count' must be an interger. We can verify that it is
     # an integer by checking if $COUNT matches the regex.
     REGEX='^[0-9]+$'
     if ! printf %s "$COUNT" | grep -Eq "$REGEX";then
@@ -127,7 +127,7 @@ list_messages(){
     fi
 
     # If /tmp/tmpsms/phonenumber.txt does not exist or is empty that means that
-    # the user has not initilized a phone number yet.
+    # the user has not initialized a phone number yet.
     [ ! -s "$TMPSMS_PHONE_NUMBER" ] && print_error "A phone number must be initilzied in order to view the messages"
 
     # The country code is needed because it gets displayed to the user. It may
@@ -137,7 +137,7 @@ list_messages(){
     PHONE_NUMBER=$(awk -F"+" '{print $2}' < $TMPSMS_PHONE_NUMBER)
     DATA=$(curl -s "$API/api/sms/messages/$PHONE_NUMBER")
 
-    # Even thought we are using the phone numbers that are available on
+    # Even though we are using the phone numbers that are available on
     # upmasked.com, there is a chance that they might remove one of the numbers.
     # The checking needs to be done in case the phone number that is stored in
     # $TMPSMS_PHONE_NUMBER has been removed.
@@ -149,7 +149,7 @@ list_messages(){
 
     # If the number of messages the user wants to view is greater than the
     # number of messages that are available, then make sure to show
-    # all the messages that are avaiable.
+    # all the messages that are available.
     [ "$COUNT" -gt "$DATA_LENGTH" ] && COUNT="$DATA_LENGTH"
 
     # Show a nice little header before showing the messages
@@ -167,10 +167,10 @@ list_messages(){
         BODY=$(printf %s "$MESSAGE_DATA" | jq -r ".body" | tr "\n" " ")
         SENDER=$(printf %s "$MESSAGE_DATA" | jq -r ".originator")
         
-        # The '||' are used as a divideder for 'column'. 'column' will use this
+        # The '||' is used as a divider for 'column'. 'column' will use this
         # divider as a point of reference to create the division. By default
         # 'column' uses a blank space but that would not work in our case as the
-        # message boyd could have multiple white spaces and 'column' would
+        # message could have multiple white spaces and 'column' would
         # split the words that are seperated by white space, in different columns.
         MESSAGES="$MESSAGES$SENDER ||$BODY\n"
 
@@ -182,7 +182,7 @@ list_messages(){
 }
 
 main(){
-    # Iterate of the array of dependencies and check if the user has them installed.
+    # Iterate the array of dependencies and check if the user has them installed.
     for dependency in jq curl fzf; do
         if ! command -v "$dependency" >/dev/null 2>&1; then
             print_error "Could not find '$dependency', is it installed?"
