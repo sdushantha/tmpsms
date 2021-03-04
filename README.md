@@ -1,3 +1,9 @@
+# tmpsms no longer works
+
+tmpsms was pretty much a wrapper around [Upmasked's](https://upmasked.com/) temporary SMS service but Upmasked seems to have taken down their website as well as their [GitHub account](https://github.com/upmasked/). `tmpsms` may come back in the future if I can find another reliable SMS service. But even if I do find one sometime soon, it unlikely I will further develop `tmpsms` to use that service as I have other priorities.
+
+----
+
 <h1 align="center">
   <img src="images/logo.png">
 </h1>
