@@ -7,7 +7,7 @@ VERSION="1.0.0"
 
 # Everything related to 'tmpsms' will be stored in this directory. Once the
 # computer get restarted, this directory gets deleted.
-TMPSMS_DIR="/tmp/tmpsms"
+TMPSMS_DIR="${TMPDIR:-/tmp}/tmpsms"
 
 # The phone number that the user has selected gets stored in this file so that
 # the do not have reselect at ever run.
